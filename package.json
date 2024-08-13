@@ -2,10 +2,22 @@
   "name": "genkitx-astra-db",
   "description": "An Astra DB indexer and retriever for Genkit",
   "version": "0.1.0",
-  "main": "dist/index.js",
+  "exports": {
+    ".": {
+      "require": "./dist/index.js",
+      "import": "./dist/index.mjs",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "check": "tsc"
+    "check": "tsc",
+    "build": "tsup ./src"
   },
   "contributors": [
     "Phil Nash <phil.nash@datastax.com> (https://philna.sh)"
@@ -28,9 +40,11 @@
     "@datastax/astra-db-ts": "^1.4.1",
     "@genkit-ai/ai": "^0.5.10",
     "@genkit-ai/core": "^0.5.8",
-    "ts-md5": "^1.3.1"
+    "ts-md5": "^1.3.1",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
+    "tsup": "^8.2.4",
     "typescript": "^5.5.4"
   }
 }

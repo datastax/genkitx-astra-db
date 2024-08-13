@@ -1,19 +1,28 @@
 {
-  "name": "genkit-astra-db",
+  "name": "genkitx-astra-db",
+  "description": "An Astra DB indexer and retriever for Genkit",
   "version": "0.1.0",
-  "main": "index.js",
+  "main": "dist/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "check": "tsc"
   },
-  "author": "Phil Nash <philnash@gmail.com> (https://philna.sh/)",
-  "license": "MIT",
-  "description": "",
+  "contributors": [
+    "Phil Nash <phil.nash@datastax.com> (https://philna.sh)"
+  ],
+  "license": "Apache-2.0",
   "keywords": [
     "genkit",
     "genkit-plugin",
     "genkit-retriever",
-    "genkit-indexer"
+    "genkit-indexer",
+    "ai",
+    "genai",
+    "generative-ai",
+    "vector",
+    "embedding",
+    "astra-db",
+    "datastax"
   ],
   "dependencies": {
     "@datastax/astra-db-ts": "^1.4.1",

@@ -8,6 +8,14 @@ This plugin provides a [Astra DB](https://docs.datastax.com/en/astra-db-serverle
 npm i genkitx-astra-db
 ```
 
+## Prerequisites
+
+You will need a DataStax account in which to run an Astra DB database. You can [sign up for a free DataStax account here](https://astra.datastax.com/signup).
+
+Once you have an account, create a Serverless Vector database. Once the database has been provisioned, create a collection. Ensure that you choose the same number of dimensions as the embedding provider you are going to use.
+
+You will then need the database's API Endpoint, an Application Token and the name of the collection in order to configure the plugin.
+
 ## Configuration
 
 To use the Astra DB plugin, specify it when you call `configureGenkit()`.
@@ -20,8 +28,8 @@ configureGenkit({
     astraDB([
       {
         clientParams: {
-          applicationToken: ASTRA_DB_APPLICATION_TOKEN!,
-          apiEndpoint: ASTRA_DB_API_ENDPOINT!,
+          applicationToken: "your_application_token",
+          apiEndpoint: "your_astra_db_endpoint",
           namespace: "default_keyspace",
         },
         collectionName: "your_collection_name",

@@ -130,7 +130,7 @@ export function astraDBRetriever<
       });
       const results = await cursor.toArray();
       const documents = results.map((result) => {
-        const { text, id, ...metadata } = result;
+        const { text, ...metadata } = result;
         return { content: [{ text: text }], metadata };
       });
       return { documents };

@@ -20,7 +20,9 @@
     "build:compile": "tsup ./src",
     "build:clean": "rm -rf ./dist",
     "build:watch": "tsup ./src --watch",
-    "build": "npm run build:clean && npm run build:compile"
+    "build": "npm run build:clean && npm run build:compile",
+    "lint": "eslint .",
+    "test": "npm run check && npm run lint"
   },
   "contributors": [
     "Phil Nash <phil.nash@datastax.com> (https://philna.sh)"
@@ -47,7 +49,11 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@eslint/js": "^9.9.1",
+    "@types/eslint__js": "^8.42.3",
+    "eslint": "^9.9.1",
     "tsup": "^8.2.4",
-    "typescript": "^5.5.4"
+    "typescript": "^5.5.4",
+    "typescript-eslint": "^8.2.0"
   }
 }

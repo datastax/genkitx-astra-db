@@ -133,7 +133,7 @@ export function astraDBRetriever<
       const cursor = collection.find(filter, { sort, limit });
       const results = await cursor.toArray();
       const documents = results.map((result) => {
-        const { text, ...metadata } = result;
+        const { text, metadata } = result;
         return { content: [{ text }], metadata };
       });
       return { documents };
@@ -183,14 +183,14 @@ export function astraDBIndexer<
           _id: Md5.hashStr(JSON.stringify(doc)),
           text: doc.text(),
           $vector: embeddings[i],
-          ...doc.metadata,
+          metadata: doc.metadata,
         }));
       } else {
         documents = docs.map((doc) => ({
           _id: Md5.hashStr(JSON.stringify(doc)),
           text: doc.text(),
           $vectorize: doc.text(),
-          ...doc.metadata
+          metadata: doc.metadata
         }))
       }
 

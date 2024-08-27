@@ -71,7 +71,7 @@ export function astraDB<EmbedderCustomOptions extends z.ZodTypeAny>(
   params: {
     clientParams?: AstraDBClientOptions;
     collectionName: string;
-    embedder: EmbedderArgument<EmbedderCustomOptions>;
+    embedder?: EmbedderArgument<EmbedderCustomOptions>;
     embedderOptions?: z.infer<EmbedderCustomOptions>;
   }[]
 ): PluginProvider {
@@ -81,7 +81,7 @@ export function astraDB<EmbedderCustomOptions extends z.ZodTypeAny>(
       params: {
         clientParams?: AstraDBClientOptions;
         collectionName: string;
-        embedder: EmbedderArgument<EmbedderCustomOptions>;
+        embedder?: EmbedderArgument<EmbedderCustomOptions>;
         embedderOptions?: z.infer<EmbedderCustomOptions>;
       }[]
     ) => ({
@@ -98,7 +98,7 @@ export function astraDBRetriever<
 >(params: {
   clientParams?: AstraDBClientOptions;
   collectionName: string;
-  embedder: EmbedderArgument<EmbedderCustomOptions>;
+  embedder?: EmbedderArgument<EmbedderCustomOptions>;
   embedderOptions?: z.infer<EmbedderCustomOptions>;
 }) {
   const { collectionName, embedder, embedderOptions } = params;
@@ -116,22 +116,25 @@ export function astraDBRetriever<
       configSchema: createAstraDBRetrieverOptionsSchema<Schema>().optional(),
     },
     async (content, options) => {
-      const embedding = await embed({
-        embedder,
-        content,
-        options: embedderOptions,
-      });
+      let embedding;
+      if (embedder) {
+        embedding = await embed({
+          embedder,
+          content,
+          options: embedderOptions,
+        });
+      }
       const filter = options?.filter || {};
       const limit = options?.k || 5;
+      const sort = embedding
+        ? { $vector: embedding }
+        : { $vectorize: content.text() };
 
-      const cursor = collection.find(filter, {
-        sort: { $vector: embedding },
-        limit,
-      });
+      const cursor = collection.find(filter, { sort, limit });
       const results = await cursor.toArray();
       const documents = results.map((result) => {
         const { text, ...metadata } = result;
-        return { content: [{ text: text }], metadata };
+        return { content: [{ text }], metadata };
       });
       return { documents };
     }
@@ -143,7 +146,7 @@ export function astraDBIndexer<
 >(params: {
   clientParams?: AstraDBClientOptions;
   collectionName: string;
-  embedder: EmbedderArgument<EmbedderCustomOptions>;
+  embedder?: EmbedderArgument<EmbedderCustomOptions>;
   embedderOptions?: z.infer<EmbedderCustomOptions>;
 }) {
   const { collectionName, embedder, embedderOptions } = {
@@ -163,22 +166,33 @@ export function astraDBIndexer<
       configSchema: AstraDBIndexerOptionsSchema,
     },
     async (docs) => {
-      const embeddings = await Promise.all(
-        docs.map((doc) =>
-          embed({
-            embedder,
-            content: doc,
-            options: embedderOptions,
-          })
-        )
-      );
+      let documents;
 
-      const documents = docs.map((doc, i) => ({
-        _id: Md5.hashStr(JSON.stringify(doc)),
-        text: doc.text(),
-        $vector: embeddings[i],
-        ...doc.metadata,
-      }));
+      if (embedder) {
+        const embeddings = await Promise.all(
+          docs.map((doc) =>
+            embed({
+              embedder,
+              content: doc,
+              options: embedderOptions,
+            })
+          )
+        );
+
+        documents = docs.map((doc, i) => ({
+          _id: Md5.hashStr(JSON.stringify(doc)),
+          text: doc.text(),
+          $vector: embeddings[i],
+          ...doc.metadata,
+        }));
+      } else {
+        documents = docs.map((doc) => ({
+          _id: Md5.hashStr(JSON.stringify(doc)),
+          text: doc.text(),
+          $vectorize: doc.text(),
+          ...doc.metadata
+        }))
+      }
 
       await collection.insertMany(documents);
     }

@@ -48,9 +48,32 @@ If you are using the default namespace, you do not need to pass it as config.
 
 ### Options
 
-* `collectionName`: You need to provide a collection name that matches a collection in the database accessed at the API endpoint
-* `embedder`: You need to provide an embedder, like Google's `textEmbeddingGecko001`. Ensure that you have set up your collection with the correct number of dimensions for the embedder that you are using
-* `embedderOptions`: If the embedder takes extra options you can provide them
+- `collectionName`: You need to provide a collection name that matches a collection in the database accessed at the API endpoint
+- `embedder`: You need to provide an embedder, like Google's `textEmbeddingGecko001`. Ensure that you have set up your collection with the correct number of dimensions for the embedder that you are using
+- `embedderOptions`: If the embedder takes extra options you can provide them
+
+### Astra DB Vectorize
+
+You do not need to provide an `embedder` as you can use [Astra DB Vectorize](https://docs.datastax.com/en/astra-db-serverless/databases/embedding-generation.html) to generate your vectors. Ensure that you have [set up your collection with an embedding provider](https://docs.datastax.com/en/astra-db-serverless/databases/embedding-generation.html#external-embedding-provider-integrations). You can then skip the `embedder` option:
+
+```typescript
+import { astraDB } from "genkitx-astra-db";
+
+configureGenkit({
+  plugins: [
+    astraDB([
+      {
+        clientParams: {
+          applicationToken: "your_application_token",
+          apiEndpoint: "your_astra_db_endpoint",
+          namespace: "default_keyspace",
+        },
+        collectionName: "your_collection_name",
+      },
+    ]),
+  ],
+});
+```
 
 ## Usage
 
@@ -66,7 +89,7 @@ Then get a reference using the `collectionName` and an optional `displayName` an
 
 ```typescript
 export const astraDBIndexer = astraDBIndexerRef({
-  collectionName: "your_collection_name"
+  collectionName: "your_collection_name",
 });
 
 await index({
@@ -79,21 +102,21 @@ await index({
 
 ```typescript
 export const astraDBRetriever = astraDBRetrieverRef({
-  collectionName: "your_collection_name"
+  collectionName: "your_collection_name",
 });
 
 await retrieve({
   retriever: astraDBRetriever,
   query,
-})
+});
 ```
 
 #### Options
 
 You can pass options to `retrieve()` that will affect the retriever. The available options are:
 
-* `k`: The number of documents to return from the retriever. The default is 5.
-* `filter`: A `Filter` as defined by the [Astra DB library](https://docs.datastax.com/en/astra-api-docs/_attachments/typescript-client/types/Filter.html). See below for how to use a filter
+- `k`: The number of documents to return from the retriever. The default is 5.
+- `filter`: A `Filter` as defined by the [Astra DB library](https://docs.datastax.com/en/astra-api-docs/_attachments/typescript-client/types/Filter.html). See below for how to use a filter
 
 #### Advanced usage
 
@@ -107,17 +130,17 @@ type Schema = {
 };
 
 export const astraDBRetriever = astraDBRetrieverRef<Schema>({
-  collectionName: "your_collection_name"
+  collectionName: "your_collection_name",
 });
 
 await retrieve({
   retriever: astraDBRetriever,
   query,
-  options: { 
+  options: {
     filter: {
-      score: { $gt: 75 }
-    }
-  }
+      score: { $gt: 75 },
+    },
+  },
 });
 ```
 

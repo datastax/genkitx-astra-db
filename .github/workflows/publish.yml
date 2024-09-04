@@ -1,4 +1,4 @@
-# This workflow will install Node.js dependencies and run tests with a single version of Node.js
+# This workflow will install Node.js dependencies and publish to npm
 
 name: Publish
 
@@ -26,6 +26,8 @@ jobs:
         run: npm ci
       - name: Run checks
         run: npm test
+      - name: Build
+        run: npm run build
       - name: Publish to npm
         if: startsWith(github.ref, 'refs/tags/')
         env:

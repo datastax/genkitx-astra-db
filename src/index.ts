@@ -190,11 +190,11 @@ export function astraDBIndexer<
           _id: Md5.hashStr(JSON.stringify(doc)),
           text: doc.text(),
           $vectorize: doc.text(),
-          metadata: doc.metadata
-        }))
+          metadata: doc.metadata,
+        }));
       }
 
-      await collection.insertMany(documents);
+      await collection.updateMany(documents, {}, { upsert: true });
     }
   );
 }

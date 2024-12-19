@@ -42,11 +42,11 @@
     "datastax"
   ],
   "dependencies": {
-    "@datastax/astra-db-ts": "^1.4.1",
-    "@genkit-ai/ai": "^0.5.10",
-    "@genkit-ai/core": "^0.5.8",
-    "ts-md5": "^1.3.1",
-    "zod": "^3.23.8"
+    "@datastax/astra-db-ts": "^1.5.0",
+    "ts-md5": "^1.3.1"
+  },
+  "peerDependencies": {
+    "genkit": "^0.9"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.1",

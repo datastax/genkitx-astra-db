@@ -12,27 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { embed, EmbedderArgument } from "@genkit-ai/ai/embedder";
+import { EmbedderArgument } from "genkit/embedder";
 import {
   CommonRetrieverOptionsSchema,
-  defineIndexer,
-  defineRetriever,
   indexerRef,
   retrieverRef,
-} from "@genkit-ai/ai/retriever";
-import { genkitPlugin, PluginProvider } from "@genkit-ai/core";
+} from "genkit/retriever";
+import { GenkitPlugin, genkitPlugin } from "genkit/plugin";
+import { Genkit, GenkitError, z } from "genkit";
 import { Md5 } from "ts-md5";
-import * as z from "zod";
 import { DataAPIClient, Filter, SomeDoc } from "@datastax/astra-db-ts";
 
 type AstraDBClientOptions = {
   applicationToken: string;
   apiEndpoint: string;
-  namespace?: string;
+  keyspace?: string;
 };
 
 const PLUGIN_NAME = "astradb";
-const DEFAULT_NAMESPACE = "default_keyspace";
+const DEFAULT_KEYSPACE = "default_keyspace";
 
 const createAstraDBRetrieverOptionsSchema = <Schema extends SomeDoc>() =>
   CommonRetrieverOptionsSchema.extend({
@@ -74,43 +72,35 @@ export function astraDB<EmbedderCustomOptions extends z.ZodTypeAny>(
     embedder?: EmbedderArgument<EmbedderCustomOptions>;
     embedderOptions?: z.infer<EmbedderCustomOptions>;
   }[]
-): PluginProvider {
-  const plugin = genkitPlugin(
-    PLUGIN_NAME,
-    async (
-      params: {
-        clientParams?: AstraDBClientOptions;
-        collectionName: string;
-        embedder?: EmbedderArgument<EmbedderCustomOptions>;
-        embedderOptions?: z.infer<EmbedderCustomOptions>;
-      }[]
-    ) => ({
-      retrievers: params.map((i) => astraDBRetriever(i)),
-      indexers: params.map((i) => astraDBIndexer(i)),
-    })
-  );
-  return plugin(params);
+): GenkitPlugin {
+  return genkitPlugin(PLUGIN_NAME, async (ai: Genkit) => {
+    params.forEach((i) => configureAstraDBRetriever(ai, i));
+    params.forEach((i) => configureAstraDBIndexer(ai, i));
+  });
 }
 
-export function astraDBRetriever<
+export function configureAstraDBRetriever<
   Schema extends SomeDoc,
   EmbedderCustomOptions extends z.ZodTypeAny
->(params: {
-  clientParams?: AstraDBClientOptions;
-  collectionName: string;
-  embedder?: EmbedderArgument<EmbedderCustomOptions>;
-  embedderOptions?: z.infer<EmbedderCustomOptions>;
-}) {
+>(
+  ai: Genkit,
+  params: {
+    clientParams?: AstraDBClientOptions;
+    collectionName: string;
+    embedder?: EmbedderArgument<EmbedderCustomOptions>;
+    embedderOptions?: z.infer<EmbedderCustomOptions>;
+  }
+) {
   const { collectionName, embedder, embedderOptions } = params;
   const { applicationToken, apiEndpoint } =
     params.clientParams ?? getDefaultConfig();
-  const namespace = params.clientParams?.namespace ?? DEFAULT_NAMESPACE;
+  const keyspace = params.clientParams?.keyspace ?? DEFAULT_KEYSPACE;
 
   const client = new DataAPIClient(applicationToken);
-  const db = client.db(apiEndpoint, { namespace });
+  const db = client.db(apiEndpoint, { keyspace });
   const collection = db.collection<Schema>(collectionName);
 
-  return defineRetriever(
+  return ai.defineRetriever(
     {
       name: `${PLUGIN_NAME}/${collectionName}`,
       configSchema: createAstraDBRetrieverOptionsSchema<Schema>().optional(),
@@ -118,7 +108,7 @@ export function astraDBRetriever<
     async (content, options) => {
       let embedding;
       if (embedder) {
-        embedding = await embed({
+        embedding = await ai.embed({
           embedder,
           content,
           options: embedderOptions,
@@ -128,7 +118,7 @@ export function astraDBRetriever<
       const limit = options?.k || 5;
       const sort = embedding
         ? { $vector: embedding }
-        : { $vectorize: content.text() };
+        : { $vectorize: content.text };
 
       const cursor = collection.find(filter, { sort, limit });
       const results = await cursor.toArray();
@@ -141,26 +131,29 @@ export function astraDBRetriever<
   );
 }
 
-export function astraDBIndexer<
+export function configureAstraDBIndexer<
   EmbedderCustomOptions extends z.ZodTypeAny
->(params: {
-  clientParams?: AstraDBClientOptions;
-  collectionName: string;
-  embedder?: EmbedderArgument<EmbedderCustomOptions>;
-  embedderOptions?: z.infer<EmbedderCustomOptions>;
-}) {
+>(
+  ai: Genkit,
+  params: {
+    clientParams?: AstraDBClientOptions;
+    collectionName: string;
+    embedder?: EmbedderArgument<EmbedderCustomOptions>;
+    embedderOptions?: z.infer<EmbedderCustomOptions>;
+  }
+) {
   const { collectionName, embedder, embedderOptions } = {
     ...params,
   };
   const { applicationToken, apiEndpoint } =
     params.clientParams ?? getDefaultConfig();
-  const namespace = params.clientParams?.namespace ?? DEFAULT_NAMESPACE;
+  const keyspace = params.clientParams?.keyspace ?? DEFAULT_KEYSPACE;
 
   const client = new DataAPIClient(applicationToken);
-  const db = client.db(apiEndpoint, { namespace });
+  const db = client.db(apiEndpoint, { keyspace });
   const collection = db.collection(collectionName);
 
-  return defineIndexer(
+  return ai.defineIndexer(
     {
       name: `${PLUGIN_NAME}/${collectionName}`,
       configSchema: AstraDBIndexerOptionsSchema,
@@ -171,7 +164,7 @@ export function astraDBIndexer<
       if (embedder) {
         const embeddings = await Promise.all(
           docs.map((doc) =>
-            embed({
+            ai.embed({
               embedder,
               content: doc,
               options: embedderOptions,
@@ -181,15 +174,15 @@ export function astraDBIndexer<
 
         documents = docs.map((doc, i) => ({
           _id: Md5.hashStr(JSON.stringify(doc)),
-          text: doc.text(),
+          text: doc.text,
           $vector: embeddings[i],
           metadata: doc.metadata,
         }));
       } else {
         documents = docs.map((doc) => ({
           _id: Md5.hashStr(JSON.stringify(doc)),
-          text: doc.text(),
-          $vectorize: doc.text(),
+          text: doc.text,
+          $vectorize: doc.text,
           metadata: doc.metadata,
         }));
       }
@@ -203,16 +196,22 @@ function getDefaultConfig(): AstraDBClientOptions {
   const maybeApiKey = process.env.ASTRA_DB_APPLICATION_TOKEN;
   const maybeEndpoint = process.env.ASTRA_DB_API_ENDPOINT;
   if (!maybeApiKey) {
-    throw new Error(
-      "Please pass in the API key or set ASTRA_DB_APPLICATION_TOKEN environment variable.\n" +
-        "For more details see https://firebase.google.com/docs/genkit/plugins/astraDB"
-    );
+    throw new GenkitError({
+      status: "INVALID_ARGUMENT",
+      message:
+        "Please pass in the API key or set ASTRA_DB_APPLICATION_TOKEN environment variable.\n" +
+        "For more details see https://firebase.google.com/docs/genkit/plugins/astraDB",
+      source: PLUGIN_NAME,
+    });
   }
   if (!maybeEndpoint) {
-    throw new Error(
-      "Please pass in the Astra DB API endpoint or set ASTRA_DB_API_ENDPOINT environment variable.\n" +
-        "For more details see https://firebase.google.com/docs/genkit/plugins/astraDB"
-    );
+    throw new GenkitError({
+      status: "INVALID_ARGUMENT",
+      message:
+        "Please pass in the Astra DB API endpoint or set ASTRA_DB_API_ENDPOINT environment variable.\n" +
+        "For more details see https://firebase.google.com/docs/genkit/plugins/astraDB",
+      source: PLUGIN_NAME,
+    });
   }
   return {
     applicationToken: maybeApiKey,

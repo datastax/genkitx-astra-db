@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { EmbedderArgument } from "genkit/embedder";
+import { EmbedderArgument, Embedding } from "genkit/embedder";
 import {
   CommonRetrieverOptionsSchema,
   indexerRef,
@@ -21,7 +21,7 @@ import {
 import { GenkitPlugin, genkitPlugin } from "genkit/plugin";
 import { Genkit, GenkitError, z } from "genkit";
 import { Md5 } from "ts-md5";
-import { DataAPIClient, Filter, SomeDoc } from "@datastax/astra-db-ts";
+import { DataAPIClient, Filter, SomeDoc, Sort } from "@datastax/astra-db-ts";
 
 type AstraDBClientOptions = {
   applicationToken: string;
@@ -106,19 +106,20 @@ export function configureAstraDBRetriever<
       configSchema: createAstraDBRetrieverOptionsSchema<Schema>().optional(),
     },
     async (content, options) => {
-      let embedding;
+      let queryEmbeddings: Embedding[] = [];
       if (embedder) {
-        embedding = await ai.embed({
+        queryEmbeddings = await ai.embed({
           embedder,
           content,
           options: embedderOptions,
         });
       }
-      const filter = options?.filter || {};
-      const limit = options?.k || 5;
-      const sort = embedding
-        ? { $vector: embedding }
-        : { $vectorize: content.text };
+      const filter = options?.filter ?? {};
+      const limit = options?.k ?? 5;
+      const sort: Sort =
+        queryEmbeddings.length > 0
+          ? { $vector: queryEmbeddings[0].embedding }
+          : { $vectorize: content.text };
 
       const cursor = collection.find(filter, { sort, limit });
       const results = await cursor.toArray();
@@ -172,12 +173,25 @@ export function configureAstraDBIndexer<
           )
         );
 
-        documents = docs.map((doc, i) => ({
-          _id: Md5.hashStr(JSON.stringify(doc)),
-          text: doc.text,
-          $vector: embeddings[i],
-          metadata: doc.metadata,
-        }));
+        documents = embeddings.flatMap((value, i) => {
+          const doc = docs[i];
+          const docEmbeddings: Embedding[] = value;
+
+          // Create one doc per docEmbedding so we can store them 1:1.
+          // They should be unique because the embedding metadata is
+          // added to the new docs.
+          const embeddingDocs = doc.getEmbeddingDocuments(docEmbeddings);
+
+          return docEmbeddings.map((docEmbedding, j) => {
+            return {
+              _id: Md5.hashStr(JSON.stringify(embeddingDocs[j])),
+              text: embeddingDocs[j].data,
+              $vector: docEmbedding.embedding,
+              metadata: embeddingDocs[j].metadata,
+              contentType: embeddingDocs[j].dataType,
+            };
+          });
+        });
       } else {
         documents = docs.map((doc) => ({
           _id: Md5.hashStr(JSON.stringify(doc)),
@@ -187,7 +201,7 @@ export function configureAstraDBIndexer<
         }));
       }
 
-      await collection.updateMany(documents, {}, { upsert: true });
+      await collection.insertMany(documents);
     }
   );
 }

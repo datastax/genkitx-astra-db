@@ -21,6 +21,8 @@ You will then need the database's API Endpoint, an Application Token and the nam
 To use the Astra DB plugin, specify it when you call `configureGenkit()`.
 
 ```typescript
+import { genkit } from "genkit";
+import { textEmbedding004 } from "@genkit-ai/googleai";
 import { astraDB } from "genkitx-astra-db";
 
 configureGenkit({
@@ -30,10 +32,10 @@ configureGenkit({
         clientParams: {
           applicationToken: "your_application_token",
           apiEndpoint: "your_astra_db_endpoint",
-          namespace: "default_keyspace",
+          keyspace: "default_keyspace",
         },
         collectionName: "your_collection_name",
-        embedder: textEmbeddingGecko001,
+        embedder: textEmbedding004,
       },
     ]),
   ],
@@ -49,7 +51,7 @@ If you are using the default namespace, you do not need to pass it as config.
 ### Options
 
 - `collectionName`: You need to provide a collection name that matches a collection in the database accessed at the API endpoint
-- `embedder`: You need to provide an embedder, like Google's `textEmbeddingGecko001`. Ensure that you have set up your collection with the correct number of dimensions for the embedder that you are using
+- `embedder`: You need to provide an embedder, like Google's `textEmbedding004`. Ensure that you have set up your collection with the correct number of dimensions for the embedder that you are using
 - `embedderOptions`: If the embedder takes extra options you can provide them
 
 ### Astra DB Vectorize
@@ -57,6 +59,7 @@ If you are using the default namespace, you do not need to pass it as config.
 You do not need to provide an `embedder` as you can use [Astra DB Vectorize](https://docs.datastax.com/en/astra-db-serverless/databases/embedding-generation.html) to generate your vectors. Ensure that you have [set up your collection with an embedding provider](https://docs.datastax.com/en/astra-db-serverless/databases/embedding-generation.html#external-embedding-provider-integrations). You can then skip the `embedder` option:
 
 ```typescript
+import { genkit } from "genkit";
 import { astraDB } from "genkitx-astra-db";
 
 configureGenkit({
@@ -66,7 +69,7 @@ configureGenkit({
         clientParams: {
           applicationToken: "your_application_token",
           apiEndpoint: "your_astra_db_endpoint",
-          namespace: "default_keyspace",
+          keyspace: "default_keyspace",
         },
         collectionName: "your_collection_name",
       },

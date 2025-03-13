@@ -2,6 +2,10 @@
 
 ## Ongoing [☰](https://github.com/datastax/genkitx-astra-db/compare/v0.2.0...main)
 
+...
+
+## 0.3.0 (2025-03-13) [☰](https://github.com/datastax/genkitx-astra-db/compare/v0.2.0...v0.3.0)
+
 ### Fixed
 
 - Changed upsert back to insert because that didn't work

@@ -25,7 +25,7 @@ import { genkit } from "genkit";
 import { textEmbedding004 } from "@genkit-ai/googleai";
 import { astraDB } from "genkitx-astra-db";
 
-configureGenkit({
+const ai = genkit({
   plugins: [
     astraDB([
       {
@@ -62,7 +62,7 @@ You do not need to provide an `embedder` as you can use [Astra DB Vectorize](htt
 import { genkit } from "genkit";
 import { astraDB } from "genkitx-astra-db";
 
-configureGenkit({
+const ai = genkit({
   plugins: [
     astraDB([
       {
